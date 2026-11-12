@@ -10,7 +10,7 @@ from .folders import relative_files
 from .notice import publisher_name, title
 from .types import Entry
 
-_CONTROL = re.compile(r"[\x00-\x08\x0b-\x1f\x7f-\x9f  ]")
+_CONTROL = re.compile(r"[\x00-\x08\x0b-\x1f\x7f-\x9f\u2028\u2029]")
 
 
 def plain(text: str) -> str:

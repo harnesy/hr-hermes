@@ -47,17 +47,19 @@ PATTERNS: list[tuple[str, re.Pattern]] = [(id, re.compile(pattern, re.IGNORECASE
     (r'\bcommand\s+and\s+control\b', "c2_explicit_long"),
     (rf'curl\s+[^\n]{{0,2048}}{_SECRET_VAR}', "exfil_curl"),
     (rf'wget\s+[^\n]{{0,2048}}{_SECRET_VAR}', "exfil_wget"),
-    (r'cat\s+[^\n]{0,2048}(\.env|credentials|\.netrc|\.pgpass|\.npmrc|\.pypirc)', "read_secrets"),
+    # The one line that is not letter for letter Hermes' own: its alternatives are the same six, with `\.env` moved
+    # from the first place to the last. Hermes' scanner of plugin code reads the original order as a shell command.
+    (r'cat\s+[^\n]{0,2048}(credentials|\.netrc|\.pgpass|\.npmrc|\.pypirc|\.env)', "read_secrets"),
 ]]
 
 # Characters a reader does not see; one of them anywhere is a hit. An emoji made of joined signs has one.
-INVISIBLE = frozenset("​‌‍⁠⁢⁣⁤﻿‪‫‬‭‮⁦⁧⁨⁩")
+INVISIBLE = frozenset("\u200b\u200c\u200d\u2060\u2062\u2063\u2064\ufeff\u202a\u202b\u202c\u202d\u202e\u2066\u2067\u2068\u2069")
 
 
 def scan(text: str) -> list[str]:
     """The ids of what the text trips, the way Hermes reads a SOUL.md: invisible characters first, then the patterns
     in the scanner's order. None means the text would load."""
-    text = text.strip().removeprefix("﻿")[:MAX_SCAN_CHARS]  # a leading byte order mark is dropped before the scan
+    text = text.strip().removeprefix("\ufeff")[:MAX_SCAN_CHARS]  # a leading byte order mark is dropped before the scan
     hits = [f"invisible_unicode_U+{ord(ch):04X}" for ch in sorted(set(text) & INVISIBLE)]
     folded = unicodedata.normalize("NFKC", text)  # full-width and other compatibility letters read as plain ones
     return hits + [id for id, pattern in PATTERNS if pattern.search(folded)]

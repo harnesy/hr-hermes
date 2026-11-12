@@ -9,7 +9,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from harnsy_hr import hermes_cmd
+from harnsy_hr import hermes_cmd, hermesscan
 from harnsy_hr.errors import Refusal
 
 FAKE = """#!/bin/sh
@@ -57,6 +57,8 @@ class RunTest(unittest.TestCase):
                 self.assertNotIn(never, text, f"{file.name} must not use {never}")
             if "subprocess" in text:
                 self.assertEqual(file.name, "hermes_cmd.py", "one child process, in one place")
+            hidden = [hex(ord(c)) for c in text if c in hermesscan.INVISIBLE or c in "\u2028\u2029"]
+            self.assertEqual(hidden, [], f"{file.name} holds a character nobody sees: write it as an escape")
 
 
 if __name__ == "__main__":
