@@ -12,12 +12,16 @@ the model never calls it, it runs only when you do. It was built and tried with 
 
 ## Install
 
+You need Hermes Agent v0.23.1 and `git` on the machine.
+
 ```
-hermes plugins install harnesy/hr-hermes --ref <40-character commit> --enable
+hermes plugins install harnesy/hr-hermes --enable
 ```
 
-This line is valid once a release commit exists; none does yet. Hermes installs a plugin at an exact commit, and the
-plugin never updates itself: a new version reaches you only when you install a newer commit.
+This installs the current `main`. To stay on one release, add `--ref <40-character commit>`: Hermes takes a full
+commit there, not a tag, and each release on
+[the releases page](https://github.com/harnesy/hr-hermes/releases) names its commit. Hermes warns that the source is
+not from its catalog. The plugin never updates itself: a new version reaches you only when you install again.
 
 From a clone of this repository, both of these were tried and work:
 
@@ -29,6 +33,29 @@ or copy the folder to `~/.hermes/plugins/harnsy-hr/` and run `hermes plugins ena
 
 It needs nothing installed: the standard library, and the `cryptography` package that Hermes Agent ships.
 
+## First hire
+
+```
+hermes harnsy-hr search accountant          find an employee
+hermes harnsy-hr show harnsy/accountant     the card, what it needs, the files, the notice
+hermes harnsy-hr hire harnsy/accountant     asks, then Hermes asks its own install question
+hermes -p accountant setup                  pick its model once: a new profile has no model settings
+hermes -p accountant chat                   talk to it
+```
+
+Instead of the `setup` dialogue, the model can be set in three lines, here for an OpenAI-compatible address:
+
+```
+hermes -p accountant config set model.provider custom
+hermes -p accountant config set model.base_url <address>
+hermes -p accountant config set model.default <model>
+```
+
+These lines were run as written on a clean Hermes Agent v0.23.1 on Linux, with the plugin installed from GitHub: the
+hire at a terminal, answering both questions, and again with `--yes`; the three `config set` lines in place of
+`setup`; one question with `chat -q`. The employee answers in its role, and its whole `SOUL.md` reached the model.
+Not run: Windows, macOS, the `setup` dialogue.
+
 ## Commands
 
 | Command | What it does |
@@ -38,7 +65,7 @@ It needs nothing installed: the standard library, and the `cryptography` package
 | `hermes harnsy-hr hire <id>` | Install it as a profile beside your own. `--name <name>` for another profile name, `--alias` to pass `--alias` on to Hermes, `--yes` for scripts. |
 | `hermes harnsy-hr update <name>` | Bring a hired employee to the catalog's current version. Your settings, memory and `.env` in the profile stay. |
 | `hermes harnsy-hr list` | The employees hired on this machine. |
-| `hermes harnsy-hr fire <name>` | Delete a hired employee's profile, then the files this plugin kept for it. |
+| `hermes harnsy-hr fire <name>` | Delete a hired employee's profile, then the files this plugin kept for it. Hermes asks you to type the profile's name first (`--yes` answers beforehand); the profile's memory and sessions go with it. |
 
 An id is `<publisher>/<name>`, for example `harnsy/accountant`.
 
