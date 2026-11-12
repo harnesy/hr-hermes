@@ -125,7 +125,15 @@ def update(desk: Desk, io: Io, name: str, yes: bool = False) -> int:
     folders.remove(kept)
     state.record(name, hired["id"], offer.entry.version)
     io.say(f"\nUpdated: «{name}» is {preview.plain(offer.entry.title)} {offer.entry.version}.")
+    if dropped := _skill_folders(old) - _skill_folders(folders.relative_files(offer.tree)):
+        io.say("This version no longer has: " + ", ".join(sorted(dropped)) + ". Hermes keeps a skill folder it once "
+               f"installed; remove it from {profile / 'skills'} if you do not want it.")
     return 0
+
+
+def _skill_folders(files) -> set[str]:
+    """The skills among a distribution's files: skills/<publisher>/<skill>."""
+    return {"/".join(p.split("/")[1:3]) for p in files if p.startswith("skills/") and p.count("/") >= 3}
 
 
 def fire(state: State, io: Io, name: str, yes: bool = False) -> int:

@@ -122,6 +122,15 @@ class UpdateTest(HiringCase):
         self.assertEqual(self.state.hires()["reviewer"]["version"], "1.1.0")
         self.assertEqual(sorted(p.name for p in self.folder.parent.iterdir()), ["reviewer"], "no folder is left beside it")
 
+    def test_a_skill_the_newer_version_dropped_is_named(self) -> None:
+        self.publish("1.2.0", 9, **{"skills/extra/SKILL.md": b"---\nname: extra\ndescription: x\n---\nx\n"})
+        self.assertEqual(hiring.update(self.desk(), self.io, "reviewer", yes=True), 0)
+        self.assertNotIn("no longer has", self.text)
+        self.publish("1.3.0", 10)
+        self.assertEqual(hiring.update(self.desk(), self.io, "reviewer", yes=True), 0)
+        self.assertIn("This version no longer has: harnsy/extra.", self.text)
+        self.assertTrue((self.profile / "skills/harnsy/extra/SKILL.md").exists(), "the plugin deletes nothing in a profile")
+
     def test_a_no_keeps_the_old_version_everywhere(self) -> None:
         before = self.tree(self.folder)
         for decline_ours, decline_hermes in [(True, False), (False, True)]:

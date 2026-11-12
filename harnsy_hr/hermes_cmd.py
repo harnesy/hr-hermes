@@ -29,6 +29,7 @@ def find_hermes() -> str:
 def run_hermes(args: list[str]) -> int:
     """Runs `hermes <args>` and returns its exit code. The code alone proves nothing: a declined install ends with 0."""
     env = {k: v for k, v in os.environ.items() if k not in _NOT_INHERITED}
+    sys.stdout.flush()  # what was said so far is on the screen before Hermes speaks
     try:
         return subprocess.run([find_hermes(), *args], env=env, check=False).returncode
     except OSError as err:
