@@ -24,10 +24,10 @@ def write_tree(folder: Path, tree: Tree) -> None:
     inside = folder.resolve()
     for rel, content in relative_files(tree).items():
         target = folder.joinpath(*rel.split("/"))
-        target.parent.mkdir(parents=True, exist_ok=True)
         if not target.parent.resolve().is_relative_to(inside) or target.name in ("", ".", ".."):
-            remove(folder)
+            remove(folder)  # checked before its folders are made: nothing appears outside
             raise Refusal("a file of the employee would land outside its folder: nothing was installed")
+        target.parent.mkdir(parents=True, exist_ok=True)
         with open(target, "xb") as f:  # a new file only: nothing is followed, nothing is overwritten
             f.write(content)
         os.chmod(target, 0o644)
