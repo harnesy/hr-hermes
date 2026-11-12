@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import http.server
+import socket
 import tempfile
 import threading
 import unittest
@@ -72,6 +73,53 @@ class HttpTest(unittest.TestCase):
         with self.assertRaises(Refusal) as got:
             HttpSource(self.base).get("v1/feed.json", 10)
         self.assertIn("more than 10 bytes", str(got.exception))
+
+
+def answering(test: unittest.TestCase, answer: bytes) -> str:
+    """The address of a server on this machine that sends `answer` to whoever asks, whatever is asked, and hangs up."""
+    listener = socket.create_server(("127.0.0.1", 0))
+    test.addCleanup(listener.close)
+
+    def serve() -> None:
+        try:
+            while True:
+                conn, _ = listener.accept()
+                with conn:
+                    conn.settimeout(5)
+                    asked = b""
+                    while b"\r\n\r\n" not in asked and (part := conn.recv(4096)):
+                        asked += part
+                    conn.sendall(answer)
+        except OSError:
+            pass  # the listener is closed: the test is over
+
+    threading.Thread(target=serve, daemon=True).start()
+    return f"http://127.0.0.1:{listener.getsockname()[1]}"
+
+
+class BrokenAnswerTest(unittest.TestCase):
+    """What is not an answer of a web server refuses in one plain sentence, like an address nobody answers at."""
+
+    def refused(self, base: str, rel: str) -> str:
+        with self.assertRaises(Refusal) as got:
+            HttpSource(base).get(rel, 1 << 20)
+        return str(got.exception)
+
+    def test_a_download_cut_short_is_refused(self) -> None:
+        base = answering(self, b"HTTP/1.1 200 OK\r\nContent-Length: 100\r\nConnection: close\r\n\r\n0123456789")
+        self.assertEqual(self.refused(base, "v1/feed.json"), "v1/feed.json: the catalog cannot be reached (IncompleteRead)")
+
+    def test_a_download_in_pieces_cut_short_is_refused(self) -> None:
+        base = answering(self, b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\nConnection: close\r\n\r\n64\r\n0123456789")
+        self.assertEqual(self.refused(base, "v1/feed.json"), "v1/feed.json: the catalog cannot be reached (IncompleteRead)")
+
+    def test_an_answer_that_is_not_http_is_refused(self) -> None:
+        base = answering(self, b"this is not a web server\r\n\r\n")
+        self.assertEqual(self.refused(base, "v1/feed.json"), "v1/feed.json: the catalog cannot be reached (BadStatusLine)")
+
+    def test_a_path_with_a_space_is_refused_before_anything_is_sent(self) -> None:
+        base = answering(self, b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nok")
+        self.assertEqual(self.refused(base, "v1/a b"), "v1/a b: the catalog cannot be reached (InvalidURL)")
 
 
 if __name__ == "__main__":

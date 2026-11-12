@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import http.client
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -46,10 +47,12 @@ class HttpSource:
         try:
             with self._opener.open(request, timeout=TIMEOUT) as response:
                 data = response.read(limit + 1)
+                if len(data) <= limit and response.length:  # the answer ended before the length it announced
+                    raise http.client.IncompleteRead(data, response.length)
         except urllib.error.HTTPError as err:
             err.close()
             raise Refusal(f"{rel}: the catalog answered {err.code}") from None
-        except (OSError, ValueError) as err:
+        except (OSError, ValueError, http.client.HTTPException) as err:  # the last is not an OSError
             raise Refusal(f"{rel}: the catalog cannot be reached ({type(err).__name__})") from None
         return _within(rel, data, limit)
 
