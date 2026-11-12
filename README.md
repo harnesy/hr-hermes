@@ -104,8 +104,10 @@ Before anything is written, on every `search`, `show`, `hire` and `update`:
 
 Any failure stops the command with the reason, and nothing is written.
 
-One more check is about Hermes, not about safety. Hermes leaves a profile's whole `SOUL.md` out when its own scanner
-for profile files matches a pattern in it (ordinary job wording can match). The plugin runs the same patterns over the
+One more check is about Hermes, not about safety. An employee is installed as a profile distribution, and Hermes
+leaves the whole `SOUL.md` of such a profile out when its own scanner for profile files matches a pattern in it
+(ordinary job wording can match). A `SOUL.md` you wrote yourself is treated differently: Hermes writes a warning to
+its log and still loads it (read in the code of Hermes Agent v0.23.1). The plugin runs the same patterns over the
 `SOUL.md` it is about to install and refuses the hire, naming the pattern, because that profile would run without its
 role. This protects you from nothing: it only tells whether the employee can work in Hermes.
 
