@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import argparse
+import base64
 import shutil
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
-from harnsy_hr import keys
+from harnsy_hr import cli, commands, keys, slash
 from harnsy_hr.desk import Desk
 from harnsy_hr.hiring import Io
 from harnsy_hr.sources import DirSource
@@ -77,3 +80,35 @@ class HiringCase(unittest.TestCase):
 
     def tree(self, folder: Path) -> dict[str, bytes]:
         return {p.relative_to(folder).as_posix(): p.read_bytes() for p in sorted(folder.rglob("*")) if p.is_file()}
+
+
+class CliCase(HiringCase):
+    """The commands as they are typed. The release is signed with the kit's key; the plugin holds that key as its
+    built-in one, so no variable is needed and no test catalog is in use unless a test sets one up."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.environ: dict[str, str] = {}
+        self.opened: list[str] = []  # every address a catalog was opened at
+        self.b64 = base64.b64encode(self.k.pub).decode()
+        built_in = mock.patch.dict(keys.CATALOG_KEYS, {self.k.kid: self.b64}, clear=True)
+        built_in.start()
+        self.addCleanup(built_in.stop)
+
+    def _open(self, base: str) -> DirSource:
+        self.opened.append(base)
+        return DirSource(self.release)
+
+    def app(self, io: Io | None = None, chat: bool = False) -> commands.App:
+        return commands.App(environ=self.environ, root=self.home, io=io or self.io, open_source=self._open,
+                            now=self.k.now, chat=chat)
+
+    def run_cli(self, *argv: str) -> int:
+        parser = argparse.ArgumentParser(prog="hermes harnsy-hr")
+        cli.setup_parser(parser)
+        self.said.clear()
+        return cli.run(parser.parse_args(argv), self.app())
+
+    def run_slash(self, raw: str) -> str:
+        with mock.patch.object(slash, "_app", lambda io: self.app(io, chat=True)):
+            return slash.handle(raw)

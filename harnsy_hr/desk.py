@@ -38,7 +38,7 @@ class Desk:
         """The catalog's feed, verified, and not older than one this machine has seen."""
         if self._feed is None:
             feed = catalog.fetch_feed(self.source, self.setup.need_keys(), catalog.HOST, self.now)
-            self.state.check_seq(feed.kid, feed.seq)
+            self.state.check_seq(self.setup.seq_slot(feed.kid), feed.seq)
             self._feed = feed
         return self._feed
 

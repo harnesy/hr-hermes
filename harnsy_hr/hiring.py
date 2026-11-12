@@ -35,6 +35,11 @@ def _yes(args: list[str], yes: bool) -> list[str]:
     return args + ["-y"] if yes else args
 
 
+def _agreed(desk: Desk, io: Io, yes: bool, question: str) -> bool:
+    """The plugin's own question. It names a test catalog, so that a yes is a yes to that catalog."""
+    return yes or io.ask((desk.setup.note + "\n" if desk.setup.note else "") + question)
+
+
 def hire(desk: Desk, io: Io, id: str, name: str = "", alias: bool = False, yes: bool = False) -> int:
     """Installs the employee as a new profile. 0 when it is installed, 1 when the person said no."""
     _, short = grammar.split_id(id)
@@ -50,7 +55,7 @@ def hire(desk: Desk, io: Io, id: str, name: str = "", alias: bool = False, yes: 
     io.say(f"\nIt becomes the Hermes profile «{name}», beside your own:\n  its files are built in  {folder}\n"
            f"    (they stay there: `hermes profile update` reads them again)\n  Hermes installs them to {profile}\n"
            "Your own profile and its SOUL.md are not touched.\n")
-    if not yes and not io.ask(f"Install {preview.plain(offer.entry.title)} as the profile «{name}»? [y/N] "):
+    if not _agreed(desk, io, yes, f"Install {preview.plain(offer.entry.title)} as the profile «{name}»? [y/N] "):
         io.say("Nothing was installed.")
         return 1
     folders.remove(folder)  # a leftover of a run that did not finish
@@ -104,7 +109,7 @@ def update(desk: Desk, io: Io, name: str, yes: bool = False) -> int:
     io.say(f"Update «{name}»: {preview.plain(offer.entry.title)} {hired.get('version', '?')} → {offer.entry.version}\n"
            f"{_changes(old, offer)}\n\nNotice:\n\n{preview.plain(offer.tree.notice)}\n"
            "Your settings, memory and .env in the profile stay as they are.\n")
-    if not yes and not io.ask(f"Update the profile «{name}»? [y/N] "):
+    if not _agreed(desk, io, yes, f"Update the profile «{name}»? [y/N] "):
         io.say("Nothing was changed.")
         return 1
     fresh, kept = folder.with_name(name + ".new"), folder.with_name(name + ".old")  # a profile name holds no dot

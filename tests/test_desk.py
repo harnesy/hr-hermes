@@ -94,16 +94,17 @@ class KeyTest(Case):
 
     def test_a_stand_names_its_address_and_key(self) -> None:
         b64 = base64.b64encode(self.k.pub).decode()
-        got = keys.setup({"HARNSY_HR_FEED": "http://127.0.0.1:8850/", "HARNSY_HR_PUB": "t1:" + b64})
+        got = keys.setup({"HARNSY_HR_FEED": "http://127.0.0.1:8850/", "HARNSY_HR_PUB": "t1:" + b64}, test_catalog=True)
         self.assertEqual((got.base, got.keys, got.test), ("http://127.0.0.1:8850/", {"t1": self.k.pub}, True))
         plain = keys.setup({})
         self.assertEqual((plain.base, plain.test), ("https://hr.harnsy.dev", False))
-        self.assertTrue(keys.setup({"HARNSY_HR_FEED": "https://stand.example"}).test)
+        self.assertTrue(keys.setup({"HARNSY_HR_FEED": "https://stand.example"}, test_catalog=True).test)
         for bad in [{"HARNSY_HR_PUB": "t1"}, {"HARNSY_HR_PUB": ":" + b64}, {"HARNSY_HR_PUB": "t1:short"},
                     {"HARNSY_HR_FEED": "ftp://x"}, {"HARNSY_HR_FEED": "stand.example"},
                     {"HARNSY_HR_FEED": "https://user:pw@stand.example"}, {"HARNSY_HR_FEED": "https://stand.example/?a=b"}]:
-            with self.assertRaises(Refusal, msg=bad):
-                keys.setup(bad)
+            with self.assertRaises(Refusal, msg=bad) as got:
+                keys.setup(bad, test_catalog=True)
+            self.assertIn(": want ", str(got.exception), bad)
 
 
 class OfferTest(Case):

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import base64
 import importlib.util
 import socket
 import sys
@@ -12,27 +11,11 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from harnsy_hr import __version__, cli, commands, keys, slash
-from harnsy_hr.sources import DirSource
-from tests.fakes import HiringCase
+from harnsy_hr import __version__, cli, keys
+from tests.fakes import CliCase
 
 ROOT = Path(__file__).parent.parent
-
-
-class CliCase(HiringCase):
-    def setUp(self) -> None:
-        super().setUp()
-        self.environ = {"HARNSY_HR_PUB": "t1:" + base64.b64encode(self.k.pub).decode()}
-
-    def app(self) -> commands.App:
-        return commands.App(environ=self.environ, root=self.home, io=self.io, open_source=lambda base: DirSource(self.release),
-                            now=self.k.now)
-
-    def run_cli(self, *argv: str) -> int:
-        parser = argparse.ArgumentParser(prog="hermes harnsy-hr")
-        cli.setup_parser(parser)
-        self.said.clear()
-        return cli.run(parser.parse_args(argv), self.app())
+C1 = dict(keys.CATALOG_KEYS)  # as the plugin ships it
 
 
 class CliTest(CliCase):
@@ -57,13 +40,7 @@ class CliTest(CliCase):
         self.assertEqual(self.run_cli("list"), 0)
         self.assertIn("No employee is hired", self.text)
 
-    def test_every_command_says_first_that_a_test_catalog_is_in_use(self) -> None:
-        for argv in [("search",), ("show", "harnsy/reviewer"), ("list",), ("hire", "harnsy/nobody"), ("fire", "nobody")]:
-            self.run_cli(*argv)
-            self.assertEqual(self.said[0], keys.TEST_LINE, argv)
-
     def test_without_a_key_every_command_that_needs_the_feed_refuses_in_a_plain_sentence(self) -> None:
-        self.environ = {}
         for argv in [("search", "review"), ("show", "harnsy/reviewer"), ("hire", "harnsy/reviewer", "--yes")]:
             with mock.patch.dict(keys.CATALOG_KEYS, clear=True):
                 self.assertEqual(self.run_cli(*argv), 1)
@@ -73,8 +50,8 @@ class CliTest(CliCase):
         self.assertEqual(self.run_cli("list"), 0, "list reads no feed")
 
     def test_a_catalog_signed_by_another_key_than_the_built_in_one_is_refused(self) -> None:
-        self.environ = {}
-        self.assertEqual(self.run_cli("search", "review"), 1)
+        with mock.patch.dict(keys.CATALOG_KEYS, C1, clear=True):
+            self.assertEqual(self.run_cli("search", "review"), 1)
         self.assertEqual(len(self.said), 1, "no test catalog is in use: the built-in key is")
         self.assertIn('kid "t1" is not a key this plugin knows', self.said[0])
         self.assertFalse((self.home / "harnsy-hr").exists())
@@ -83,7 +60,7 @@ class CliTest(CliCase):
         feed = self.release / "v1" / "feed.json"
         feed.write_bytes(feed.read_bytes().replace(b"Finds", b"Hides"))
         self.assertEqual(self.run_cli("hire", "harnsy/reviewer", "--yes"), 1)
-        self.assertEqual(self.said[1:], ["harnsy-hr: feed.json.sig does not verify"])
+        self.assertEqual(self.said, ["harnsy-hr: feed.json.sig does not verify"])
         self.assertFalse((self.home / "harnsy-hr").exists(), "nothing is written")
         self.assertFalse((self.home / "profiles").exists())
 
@@ -110,22 +87,18 @@ class CliTest(CliCase):
 
 
 class SlashTest(CliCase):
-    def slash(self, raw: str) -> str:
-        with mock.patch.object(slash, "_app", lambda io: commands.App(self.environ, self.home, io, lambda base: DirSource(self.release), self.k.now)):
-            return slash.handle(raw)
-
     def test_search_show_and_list_answer_in_the_chat(self) -> None:
-        self.assertIn("harnsy/reviewer  Reviewer 1.0.0", self.slash("search review code"))
-        self.assertIn("Licensed under CC BY 4.0", self.slash("show harnsy/reviewer"))
-        self.assertIn("No employee is hired", self.slash("list"))
+        self.assertIn("harnsy/reviewer  Reviewer 1.0.0", self.run_slash("search review code"))
+        self.assertIn("Licensed under CC BY 4.0", self.run_slash("show harnsy/reviewer"))
+        self.assertIn("No employee is hired", self.run_slash("list"))
         (self.release / "v1" / "feed.json.sig").unlink()
-        self.assertIn("harnsy-hr: v1/feed.json.sig", self.slash("show harnsy/reviewer"), "a refusal is the answer")
+        self.assertIn("harnsy-hr: v1/feed.json.sig", self.run_slash("show harnsy/reviewer"), "a refusal is the answer")
 
     def test_what_waits_for_a_person_is_handed_to_the_terminal(self) -> None:
         for raw, want in [("hire harnsy/reviewer", "hermes harnsy-hr hire harnsy/reviewer"), ("update reviewer", "hermes harnsy-hr update reviewer"),
                           ("fire reviewer", "hermes harnsy-hr fire reviewer"), ("hire  harnsy/reviewer --yes", "hermes harnsy-hr hire harnsy/reviewer"),
                           ("hire x; rm -rf ~", "hermes harnsy-hr hire <publisher>/<name>"), ("fire ../../x", "hermes harnsy-hr fire <profile name>")]:
-            answer = self.slash(raw)
+            answer = self.run_slash(raw)
             self.assertIn(want, answer)
             self.assertIn("terminal", answer)
             self.assertNotIn("rm -rf", answer)
@@ -134,7 +107,7 @@ class SlashTest(CliCase):
 
     def test_anything_else_gets_the_usage(self) -> None:
         for raw in ["", "help", "dance", "   "]:
-            self.assertIn("/harnsy-hr search <words>", self.slash(raw))
+            self.assertIn("/harnsy-hr search <words>", self.run_slash(raw))
 
 
 class Ctx:

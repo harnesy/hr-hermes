@@ -27,22 +27,26 @@ class App:
     io: Io
     open_source: Callable[[str], object] = HttpSource
     now: datetime | None = None
+    chat: bool = False  # the command came from a chat: nobody typed a command line
 
     @staticmethod
-    def here(io: Io) -> "App":
-        return App(environ=os.environ, root=hermes_root(), io=io)
+    def here(io: Io, chat: bool = False) -> "App":
+        return App(environ=os.environ, root=hermes_root(), io=io, chat=chat)
 
     def desk(self, setup: keys.Setup) -> Desk:
         return Desk(setup, State(self.root), self.open_source(setup.base), self.now)
 
 
-def run(app: App, command: str, **options) -> int:
-    """Runs one command. A refusal is one plain line and code 1."""
+def run(app: App, command: str, test_catalog: bool = False, **options) -> int:
+    """Runs one command. A refusal is one plain line and code 1. Which catalog a command reads is decided first,
+    before a source is opened or a file is written; `list` and `fire` read none."""
     try:
-        setup = keys.setup(app.environ)
+        if command not in _READ_THE_CATALOG:
+            return _COMMANDS[command](app, **options)
+        setup = keys.setup(app.environ, test_catalog=test_catalog, chat=app.chat)
         if setup.test:
             app.io.say(keys.TEST_LINE)
-        return _COMMANDS[command](app, setup, **options)
+        return _COMMANDS[command](app.desk(setup), app.io, **options)
     except Refusal as err:
         app.io.say(f"harnsy-hr: {err}")
     except OSError as err:
@@ -50,26 +54,26 @@ def run(app: App, command: str, **options) -> int:
     return 1
 
 
-def _search(app: App, setup: keys.Setup, words: str = "", department: str = "", limit: int = SEARCH_LIMIT) -> int:
-    found = searching.search(app.desk(setup).feed().entries, words, department)
+def _search(desk: Desk, io: Io, words: str = "", department: str = "", limit: int = SEARCH_LIMIT) -> int:
+    found = searching.search(desk.feed().entries, words, department)
     if not found:
-        app.io.say("No employee matches. Try other words, or `search` alone for everyone.")
+        io.say("No employee matches. Try other words, or `search` alone for everyone.")
         return 0
     shown = found[:max(1, limit)]
-    app.io.say("\n\n".join(preview.card(e) for e in shown))
+    io.say("\n\n".join(preview.card(e) for e in shown))
     more = f" ({len(found) - len(shown)} more: add a word, or --limit {len(found)})" if len(found) > len(shown) else ""
-    app.io.say(f"\n{len(shown)} of {len(found)}{more}. Look closer: hermes harnsy-hr show <id>")
+    io.say(f"\n{len(shown)} of {len(found)}{more}. Look closer: hermes harnsy-hr show <id>")
     return 0
 
 
-def _show(app: App, setup: keys.Setup, id: str) -> int:
-    offer = app.desk(setup).offer(id)
-    app.io.say(preview.details(offer))
-    app.io.say(f"\nHire it, at a terminal: hermes harnsy-hr hire {offer.entry.id}")
+def _show(desk: Desk, io: Io, id: str) -> int:
+    offer = desk.offer(id)
+    io.say(preview.details(offer))
+    io.say(f"\nHire it, at a terminal: hermes harnsy-hr hire {offer.entry.id}")
     return 0
 
 
-def _list(app: App, setup: keys.Setup) -> int:
+def _list(app: App) -> int:
     state = State(app.root)
     hires = state.hires()
     if not hires:
@@ -82,16 +86,9 @@ def _list(app: App, setup: keys.Setup) -> int:
     return 0
 
 
-def _hire(app: App, setup: keys.Setup, id: str, name: str = "", alias: bool = False, yes: bool = False) -> int:
-    return hiring.hire(app.desk(setup), app.io, id, name=name, alias=alias, yes=yes)
-
-
-def _update(app: App, setup: keys.Setup, name: str, yes: bool = False) -> int:
-    return hiring.update(app.desk(setup), app.io, name, yes=yes)
-
-
-def _fire(app: App, setup: keys.Setup, name: str, yes: bool = False) -> int:
+def _fire(app: App, name: str, yes: bool = False) -> int:
     return hiring.fire(State(app.root), app.io, name, yes=yes)
 
 
-_COMMANDS = {"search": _search, "show": _show, "list": _list, "hire": _hire, "update": _update, "fire": _fire}
+_READ_THE_CATALOG = ("search", "show", "hire", "update")
+_COMMANDS = {"search": _search, "show": _show, "list": _list, "hire": hiring.hire, "update": hiring.update, "fire": _fire}

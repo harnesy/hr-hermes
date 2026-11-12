@@ -25,7 +25,7 @@ def _no_terminal(*_args) -> bool:
 
 
 def _app(io: Io) -> commands.App:
-    return commands.App.here(io)
+    return commands.App.here(io, chat=True)
 
 
 def _at_a_terminal(command: str, rest: list[str]) -> str:
