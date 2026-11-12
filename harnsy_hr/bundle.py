@@ -43,7 +43,8 @@ def _regular(info: zipfile.ZipInfo) -> bool:
 
 def unzip(file: bytes) -> dict[str, bytes]:
     """The files of a .harnsy file: at most MAX_ZIP_FILES entries, MAX_BUNDLE bytes unpacked whatever the headers say
-    (counted by the bytes read), no name twice, no name that leaves the bundle, plain files only."""
+    (counted by the bytes read), no name twice, no name that leaves the bundle, plain files only, stored or deflated
+    (the two ways the format packs a file; no other is unpacked)."""
     try:
         with zipfile.ZipFile(BytesIO(file)) as z:
             entries = z.infolist()
@@ -56,6 +57,8 @@ def unzip(file: bytes) -> dict[str, bytes]:
                     raise Refusal(f"{_shown(name)} is in the zip twice")
                 if not clean_relative(name) or not _regular(info):
                     raise Refusal(f"zip entry {_shown(name)}: not a plain file inside the bundle")
+                if info.compress_type not in (zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED):
+                    raise Refusal(f"zip entry {_shown(name)}: not stored or deflated")
                 with z.open(info) as member:
                     data = member.read(left + 1)
                 left -= len(data)

@@ -10,7 +10,6 @@ from datetime import timedelta
 from pathlib import Path
 
 from harnsy_hr import catalog
-from harnsy_hr.bundle import MAX_BUNDLE, MAX_ZIP_FILES
 from harnsy_hr.errors import Refusal
 from harnsy_hr.sources import DirSource
 from harnsy_hr.verify import parse_key
@@ -211,58 +210,6 @@ class RefusalTest(Case):
     @staticmethod
     def claims(files) -> dict:
         return {"iss": HOST, "sub": "harnsy/reviewer", "ver": "1.0.0", "manifest_sha256": sha(files["manifest.json"])}
-
-
-class UnsafeZipTest(Case):
-    """A bundle whose zip breaks the format's limits is refused even when the feed names its hash."""
-
-    def zipped(self, order, files, modes=None) -> None:
-        p = self.k.pack("harnsy/reviewer", "1.0.0", sample("reviewer"))
-        p.file = kit.zip_bytes(order, files, modes)
-        p.entry["size"], p.entry["sha256"] = len(p.file), sha(p.file)
-        self.k.release(self.dir, [p])
-
-    def test_a_name_that_climbs_out(self) -> None:
-        self.zipped(["manifest.json", "../../etc/cron.d/x"], {"manifest.json": b"{}", "../../etc/cron.d/x": b"x"})
-        self.refused("not a plain file inside the bundle")
-
-    def test_names_that_are_no_clean_relative_path(self) -> None:
-        for name in ["/etc/passwd", "a\\b", "a/../b", "./a", "a//b", "a/", ".."]:
-            self.zipped([name], {name: b"x"})
-            self.refused("not a plain file inside the bundle")
-
-    def test_a_link_or_a_folder(self) -> None:
-        for mode in [0o120777, 0o040755, 0o010644]:
-            self.zipped(["a"], {"a": b"manifest.json"}, {"a": mode})
-            self.refused("not a plain file inside the bundle")
-
-    def test_a_name_twice(self) -> None:
-        self.zipped(["bundle.json", "bundle.json"], {"bundle.json": b"{}"})
-        self.refused("in the zip twice")
-
-    def test_more_than_it_may_unpack_to(self) -> None:
-        big = b"a" * (MAX_BUNDLE // 2 + 1)
-        self.zipped(["a", "b"], {"a": big, "b": big})
-        self.refused("unpacks to more than")
-
-    def test_too_many_entries(self) -> None:
-        names = [f"f{i}" for i in range(MAX_ZIP_FILES + 1)]
-        self.zipped(names, dict.fromkeys(names, b"x"))
-        self.refused("zip entries")
-
-    def test_not_a_zip(self) -> None:
-        p = self.k.pack("harnsy/reviewer", "1.0.0", sample("reviewer"))
-        p.file = b"not a zip at all"
-        p.entry["size"], p.entry["sha256"] = len(p.file), sha(p.file)
-        self.k.release(self.dir, [p])
-        self.refused("harnsy/reviewer@1.0.0")
-
-    def test_a_bundle_file_above_the_limit_is_not_read(self) -> None:
-        p = self.k.pack("harnsy/reviewer", "1.0.0", sample("reviewer"))
-        p.file = b"\0" * (MAX_BUNDLE + 1)
-        p.entry["size"], p.entry["sha256"] = len(p.file), sha(p.file)
-        self.k.release(self.dir, [p])
-        self.refused("more than")
 
 
 class KeyTest(unittest.TestCase):

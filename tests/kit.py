@@ -41,17 +41,19 @@ def write(file: Path, b: bytes) -> None:
     file.write_bytes(b)
 
 
-def zip_bytes(order: list[str], files: dict[str, bytes], modes: dict[str, int] | None = None) -> bytes:
-    """Files as a zip in the given order; a name that has no file is left out. modes sets a Unix mode per name."""
+def zip_bytes(order: list[str], files: dict[str, bytes], modes: dict[str, int] | None = None,
+              method: int = zipfile.ZIP_DEFLATED) -> bytes:
+    """Files as a zip in the given order; a name that has no file is left out. modes sets a Unix mode per name,
+    method is how every entry is packed."""
     buf = BytesIO()
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")  # a test may write one name twice
-        with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+        with zipfile.ZipFile(buf, "w", method) as z:
             for name in order:
                 if name not in files:
                     continue
                 info = zipfile.ZipInfo(name)
-                info.compress_type = zipfile.ZIP_DEFLATED
+                info.compress_type = method
                 info.external_attr = (modes or {}).get(name, 0o100644) << 16
                 z.writestr(info, files[name])
     return buf.getvalue()
