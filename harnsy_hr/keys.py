@@ -9,15 +9,14 @@ from .errors import Refusal
 from .verify import parse_key
 
 # ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-# │ THE CATALOG'S PUBLIC KEYS, by key id: the base64 of the raw 32-byte Ed25519 public key.                        │
-# │                                                                                                                │
-# │ EMPTY SLOT: the catalog's key `c1` is not published yet. Until its line is added here, every command that     │
-# │ needs the catalog refuses and says so. A key is public by nature; adding one is a change of the plugin's code │
-# │ and reaches people only as a new release of the plugin.                                                       │
-# │                                                                                                                │
-# │     "c1": "<base64 of the raw 32-byte key>",                                                                   │
+# │ THE CATALOG'S PUBLIC KEYS, by key id: the base64 of the raw 32-byte Ed25519 public key.                      │
+# │                                                                                                              │
+# │ `c1` is the key hr.harnsy.dev signs its feed and every employee's file with. A feed signed under a key id    │
+# │ that is not listed here is refused with «update the plugin». A key is public by nature; adding or dropping   │
+# │ one is a change of the plugin's code and reaches people only as a new release of the plugin.                 │
 # └──────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 CATALOG_KEYS: dict[str, str] = {
+    "c1": "WMZK4GiSTfBo5ZeMNZjDRextsTDGfoCU1KF6jlrqVjM=",
 }
 
 DEFAULT_BASE = "https://hr.harnsy.dev"

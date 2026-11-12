@@ -65,11 +65,19 @@ class CliTest(CliCase):
     def test_without_a_key_every_command_that_needs_the_feed_refuses_in_a_plain_sentence(self) -> None:
         self.environ = {}
         for argv in [("search", "review"), ("show", "harnsy/reviewer"), ("hire", "harnsy/reviewer", "--yes")]:
-            self.assertEqual(self.run_cli(*argv), 1)
+            with mock.patch.dict(keys.CATALOG_KEYS, clear=True):
+                self.assertEqual(self.run_cli(*argv), 1)
             self.assertEqual(self.said, ["harnsy-hr: " + keys.NO_KEY])
         self.assertEqual(self.hermes.calls, [])
         self.assertFalse((self.home / "harnsy-hr").exists())
         self.assertEqual(self.run_cli("list"), 0, "list reads no feed")
+
+    def test_a_catalog_signed_by_another_key_than_the_built_in_one_is_refused(self) -> None:
+        self.environ = {}
+        self.assertEqual(self.run_cli("search", "review"), 1)
+        self.assertEqual(len(self.said), 1, "no test catalog is in use: the built-in key is")
+        self.assertIn('kid "t1" is not a key this plugin knows', self.said[0])
+        self.assertFalse((self.home / "harnsy-hr").exists())
 
     def test_a_refusal_is_one_plain_line_and_code_1(self) -> None:
         feed = self.release / "v1" / "feed.json"

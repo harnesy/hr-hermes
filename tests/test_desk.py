@@ -7,12 +7,14 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from harnsy_hr import keys
 from harnsy_hr.desk import Desk
 from harnsy_hr.errors import Refusal
 from harnsy_hr.sources import DirSource
 from harnsy_hr.state import State
+from harnsy_hr.verify import parse_key
 from tests.kit import Kit, sample
 
 
@@ -74,8 +76,17 @@ class SeqTest(Case):
 
 
 class KeyTest(Case):
+    def test_the_catalogs_own_key_is_built_in(self) -> None:
+        self.assertEqual(list(keys.CATALOG_KEYS), ["c1"], "exactly the catalog's key, no other")
+        self.assertEqual({kid: len(key) for kid, key in keys.setup({}).keys.items()}, {"c1": 32})
+        self.assertEqual(parse_key("c1", keys.CATALOG_KEYS["c1"])[1], keys.setup({}).keys["c1"])
+
     def test_without_a_key_built_in_nothing_is_fetched(self) -> None:
-        self.assertEqual(keys.setup({}).keys, {}, "the slot of the real key is empty in this version")
+        with mock.patch.dict(keys.CATALOG_KEYS, clear=True):
+            self.assertEqual(keys.setup({}).keys, {})
+            with self.assertRaises(Refusal) as got:
+                keys.setup({}).need_keys()
+            self.assertIn("holds no catalog key yet", str(got.exception))
         self.publish()
         with self.assertRaises(Refusal) as got:
             self.desk(known={}).feed()

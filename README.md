@@ -10,9 +10,6 @@ In Hermes one employee is one profile: its own `SOUL.md`, its own skills, its ow
 The plugin adds the command `hermes harnsy-hr` and the chat command `/harnsy-hr`. It registers no tools and no hooks:
 the model never calls it, it runs only when you do. It was built and tried with Hermes Agent v0.23.1.
 
-> **Status.** This version holds no catalog key yet (`harnsy_hr/keys.py` has an empty slot for it), so every command
-> that needs the catalog stops with one sentence saying so. It starts working with the release that carries the key.
-
 ## Install
 
 ```
@@ -64,8 +61,9 @@ command runs where nobody may be at a terminal.
 
 Before anything is written, on every `search`, `show`, `hire` and `update`:
 
-- the catalog's feed carries a valid Ed25519 signature over its exact bytes, by a key built into the plugin; a key
-  the plugin does not know stops it with «update the plugin»;
+- the catalog's feed carries a valid Ed25519 signature over its exact bytes, by the catalog's public key, which is
+  built into the plugin (`c1`, in `harnsy_hr/keys.py`); a key the plugin does not know stops it with «update the
+  plugin»;
 - the feed is of the known version, has not expired, and is not older than one this machine has already seen;
 - the employee's file is on the catalog's own host, and has the size and the SHA-256 the signed feed names, before
   it is opened;
