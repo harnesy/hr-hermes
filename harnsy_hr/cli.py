@@ -20,7 +20,7 @@ DESCRIPTION = """Employees of the catalog hr.harnsy.dev as Hermes profiles.
   fire <name>        delete a hired employee's profile (Hermes asks to confirm)
 
 The catalog's feed and every employee are checked against the catalog's signature on this machine before anything
-is written. Network: GET to hr.harnsy.dev only."""
+is written. Network: GET to hr.harnsy.dev only, straight to it (no proxy)."""
 
 
 def setup_parser(parser) -> None:

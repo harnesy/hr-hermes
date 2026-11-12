@@ -53,9 +53,11 @@ hermes -p <name> chat      talk to it
 
 A profile of that name that already exists is never replaced: `hire` stops and asks for `--name`.
 
-In a chat, `/harnsy-hr search <words>`, `/harnsy-hr show <id>` and `/harnsy-hr list` answer in place. For `hire`,
-`update` and `fire` the chat command answers with the terminal command to run: they ask you questions, and a chat
-command runs where nobody may be at a terminal.
+In a chat, `/harnsy-hr search <words>`, `/harnsy-hr show <id>` and `/harnsy-hr list` answer in place (`search` and
+`show` fetch the catalog and write the feed number to `state.json`, from the process that serves the chat). For
+`hire`, `update` and `fire` the chat command answers with the terminal command to run: they ask you questions, and a
+chat command runs where nobody may be at a terminal. Every chat answer is one code block, so a link or a mention in a
+publisher's text is shown as written and not made by the bot.
 
 ## What is checked on your machine
 
@@ -80,21 +82,36 @@ for profile files matches a pattern in it (ordinary job wording can match). The 
 `SOUL.md` it is about to install and refuses the hire, naming the pattern, because that profile would run without its
 role. This protects you from nothing: it only tells whether the employee can work in Hermes.
 
+One of the copied patterns lists its alternatives in another order than Hermes does (the same texts match), so that
+Hermes' scanner of plugin code does not misread the plugin's own file as a command that dumps the environment; the
+file says so where the pattern is.
+
 What is not checked: what an employee's text says. It is a prompt written by its publisher; read `show` before you
-hire.
+hire. What the plugin prints of it (the card, the notice, file names) is printed without control characters and
+without the characters nobody sees; the files are saved as published.
 
 ## What it does on your machine
 
 - **Network.** `GET` requests to `https://hr.harnsy.dev` only: the feed, its signature, and the file of the employee
   you asked for. The request carries `User-Agent: hr-hermes/<version>` and nothing else of yours. The catalog's site
-  logs requests like any site (address, time, path, `User-Agent`). No telemetry, no other host.
+  logs requests like any site (address, time, path, `User-Agent`). No telemetry, no other host. The plugin connects
+  straight to the catalog: a proxy named in the environment (`https_proxy`, `http_proxy`) is not used, so behind a
+  proxy-only network the plugin does not work. No redirect is followed. Each step waits at most 20 seconds, and a
+  file that has not arrived whole 60 seconds after its request is given up (the clock is looked at between the
+  pieces of the file).
 - **Files.** It writes to its own folder under the Hermes home, `~/.hermes/harnsy-hr/`: `state.json` (the newest feed
   number seen, and what you hired) and `profiles/<name>/` (the files of each hired employee; they stay there,
   `hermes profile update` reads them again). Hermes then copies them into the profile folder,
-  `~/.hermes/profiles/<name>/`. The plugin reads that profile's `distribution.yaml` and the files it installed, to
+  `~/.hermes/profiles/<name>/`. Signatures are checked by `hermes harnsy-hr hire` and `hermes harnsy-hr update`
+  only: `hermes profile update <name>` run directly installs whatever that kept folder holds at that moment, with no
+  signature check then. The plugin reads that profile's `distribution.yaml` and the files it installed, to
   see whether Hermes finished. It never reads `.env`, `auth.json` or any other credential store.
 - **One child process.** `hermes profile install`, `hermes profile update` or `hermes profile delete`, started with
-  an argument list (no shell), at your terminal, so Hermes asks its own question. Nothing else is started.
+  an argument list (no shell), at your terminal, so Hermes asks its own question. Nothing else is started. The
+  Hermes started is the one that is running, by its own interpreter: `<the running Python> -P -m hermes_cli.main …`.
+  Nothing is looked up on `PATH` and nothing is taken from the current folder (`-P` keeps that folder out of
+  Python's search for modules), so a `hermes`, a `hermes.bat` or a `hermes_cli/` lying in the folder you stand in is
+  never what starts. When the running Hermes cannot be found this way, nothing is started.
 - **Scripts.** Some employees bring scripts in their skills. The plugin saves them as plain files and never runs
   them.
 - **No self-update.** The plugin never fetches or replaces its own code.
@@ -112,9 +129,26 @@ and the folders Hermes makes for every profile (memory, sessions, logs and so on
 profile's model settings are yours. When a newer version of an employee drops a skill, Hermes keeps the old skill's
 folder in the profile; `update` names it so you can remove it.
 
-For test stands only, two environment variables change where the catalog is fetched from and which key it is checked
-with: `HARNSY_HR_FEED` and `HARNSY_HR_PUB`. When either is set, every command first prints a line saying that a test
-catalog is in use.
+## Test catalogs
+
+For test stands only. Two environment variables change where the catalog is fetched from and which key it is checked
+with: `HARNSY_HR_FEED` (an address) and `HARNSY_HR_PUB` (`<kid>:<base64 of the raw public key>`; it replaces the
+built-in key). Hermes fills the environment from `<Hermes home>/.env`, so a variable alone is not your word that a
+test catalog is wanted. That is why there is a flag:
+
+- A test catalog is read only when the command line says `--test-catalog` as well (`search`, `show`, `hire`,
+  `update`). With a variable set and no flag, the command refuses before anything is fetched or written and names the
+  variable; unset it to read hr.harnsy.dev. With the flag and no variable it refuses too.
+- Never in a chat: `/harnsy-hr search` and `/harnsy-hr show` refuse while a variable is set. `list` and `fire` read
+  no catalog and work as always.
+- With the flag, every command first prints a line saying that a test catalog is in use, and the question `hire` and
+  `update` ask names the test catalog's address and key id and says that it is not hr.harnsy.dev. `--yes` together
+  with `--test-catalog` is allowed and skips that question: both are words of the command line, and stands are
+  scripted.
+- `HARNSY_HR_FEED` with plain `http` is taken only for this machine itself (`127.0.0.1`, `[::1]`, `localhost`); any
+  other address needs `https`.
+- The feed number of a test catalog is kept in `state.json` under `test:<kid>`, apart from the built-in key's: a
+  test run never reads or changes the number kept for `c1`, so a stand cannot lock the real catalog out.
 
 ## Licences
 
