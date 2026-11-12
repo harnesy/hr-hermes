@@ -144,7 +144,7 @@ class RefusalTest(Case):
         self.release()
         for field in ["cv_url", "avatar_url"]:
             self.resign(lambda f: f["bundles"][0].update({field: "https://evil.example/e/harnsy/reviewer"}))
-            self.refused("not on hr.harnsy.dev")
+            self.refused(field + " not on hr.harnsy.dev")
 
     def test_the_bundle_file_is_another_size(self) -> None:
         self.release()

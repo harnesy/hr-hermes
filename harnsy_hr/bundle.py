@@ -87,10 +87,10 @@ def open_bundle(kid: str, pub: bytes, host: str, e: Entry, file: bytes) -> Emplo
                       f"({_shown(m.format)[1:-1]} v{m.format_version}, {_shown(m.kind)[1:-1]})")
     files = {}
     for name, digest in m.files.items():
-        if name not in everything or name.startswith("signatures/") or sha256(everything[name]) != digest:
-            raise Refusal(f"{_shown(name)[1:-1]} missing or its sha256 differs")
         if not grammar.is_bundle_path(name):
-            raise Refusal(f"{_shown(name)}: not a file a bundle may hold")
+            raise Refusal(f"{_shown(name)} is not a file a bundle carries")
+        if name not in everything or name.startswith("signatures/") or sha256(everything[name]) != digest:
+            raise Refusal(f"{name} missing or its sha256 differs")
         files[name] = everything[name]
     claims = verify.jws_claims(kid, pub, everything.get(SIGNATURE_FILE, b"").decode("utf-8", "replace"))
     w = "catalog.jws claims"

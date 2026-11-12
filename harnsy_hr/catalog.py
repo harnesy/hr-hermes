@@ -41,7 +41,7 @@ def bundle_path(url: str, host: str) -> str | None:
     return rel
 
 
-def _served(doc: dict, host: str) -> Entry | None:
+def _served(doc: dict, host: str, revoked: set[str]) -> Entry | None:
     """One entry of the feed, checked; None for what bundle v1 does not serve: another kind, a revoked version."""
     e = Entry.read(doc)
     if e.kind != "employee":
@@ -49,9 +49,12 @@ def _served(doc: dict, host: str) -> Entry | None:
     if not grammar.is_id(e.id) or not grammar.is_version(e.version):
         raise Refusal("feed.json lists an employee whose id or version is not in the catalog's form "
                       "(<publisher>/<name>, MAJOR.MINOR.PATCH)")
-    on_host = bundle_path(e.url, host) is not None and all(
-        not u or u.startswith("https://" + host + "/") for u in (e.cv_url, e.avatar_url))
-    if not on_host:
+    for name, link in (("cv_url", e.cv_url), ("avatar_url", e.avatar_url)):
+        if link and not link.startswith("https://" + host + "/"):
+            raise Refusal(f"{e.id}: {name} not on {host}")  # shown to a person and named in the notice as the source
+    if e.id + "@" + e.version in revoked:
+        return None
+    if bundle_path(e.url, host) is None:
         raise Refusal(f"{e.id}: url not on {host}")
     return e
 
@@ -68,12 +71,8 @@ def read_feed(keys: dict[str, bytes], feed: bytes, sig: bytes, host: str, now: d
         shown = expires if at else "?"
         raise Refusal(f"feed.json: v {v}, expires {shown} (now {now.astimezone(timezone.utc):%Y-%m-%dT%H:%M:%SZ})")
     revoked = set(jsonread.texts(doc, "revoked", "feed.json"))
-    entries = []
-    for raw in jsonread.objects(doc, "bundles", "feed.json"):
-        e = _served(raw, host)
-        if e is not None and e.id + "@" + e.version not in revoked:
-            entries.append(e)
-    return Feed(kid=kid, seq=seq, expires=at, entries=entries)
+    served = (_served(raw, host, revoked) for raw in jsonread.objects(doc, "bundles", "feed.json"))
+    return Feed(kid=kid, seq=seq, expires=at, entries=[e for e in served if e is not None])
 
 
 def fetch_feed(source, keys: dict[str, bytes], host: str, now: datetime) -> Feed:

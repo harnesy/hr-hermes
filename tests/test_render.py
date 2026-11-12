@@ -80,6 +80,19 @@ class GoldenTest(unittest.TestCase):
                 for sealed in ["A made-up desk manual", "nodes", "[S1]"]:
                     self.assertNotIn(sealed, b"\n".join(files.values()).decode(), "sources and harnsy Max needs stay sealed")
 
+    def test_a_path_that_leaves_the_tree_is_refused_by_the_renderer_itself(self) -> None:
+        """The catalog refuses a release with a name outside its grammar; the renderer checks again, on its own."""
+        for id, files in [("noslash", []), ("harnsy//etc/cron.d/x", []), ("harnsy/../../../../tmp/x", []),
+                          ("harnsy/x\npermissionMode: bypassPermissions", []), ("harnsy/x\\..\\y", []),
+                          ("harnsy/x", ["skills/../../evil/SKILL.md"]), ("harnsy/x", ["skills/s/../../../evil"]),
+                          ("harnsy/x", ["skills//SKILL.md"]), ("harnsy/x", ["skills/s/a\x07b"]), ("harnsy/x", ["skills/s/a\\b"])]:
+            e = worker("harnsy", "", "CC-BY-4.0", files)
+            e.entry.id = id
+            with self.assertRaises(Refusal, msg=(id, files)):
+                render.render(e)
+        plain = worker("harnsy", "", "CC-BY-4.0", ["skills/s/scripts/run.sh"])
+        self.assertIn(("sample/skills/harnsy/s/scripts/run.sh", b"x"), render.render(plain).files)
+
     def test_a_skill_that_takes_the_casebooks_place_is_refused(self) -> None:
         e = worker("harnsy", "", "CC-BY-4.0", ["docs/persona-casebook.md", "skills/persona-casebook/SKILL.md"])
         with self.assertRaises(Refusal):

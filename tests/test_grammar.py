@@ -73,11 +73,47 @@ class SignedButNotValidTest(unittest.TestCase):
             self.k.release(self.dir, [pack], lambda f: f["bundles"][0].update({field: value}))
             self.refused("not in the catalog's form")
 
+    def test_every_name_of_the_grammar_is_taken(self) -> None:
+        part = "0" + "a-" * 31 + "z"  # 64 characters
+        extra = ["avatar.png", "avatar.jpg", "avatar.jpeg", "avatar.webp", "skills/" + "s" * 40 + "/SKILL.md", "skills/-/LICENSE",
+                 "skills/race-hunt/LICENSE", "skills/race-hunt/scripts/Run_it-2.sh", "skills/race-hunt/references/guide.v2.md",
+                 "skills/race-hunt/assets/" + "f" * 64, "skills/race-hunt/scripts/console.txt"]
+        pack = self.k.pack(part + "/" + part, "0.10.123", sample("reviewer") | dict.fromkeys(extra, b"x\n"))
+        pack.entry["url"] = "https://hr.harnsy.dev/packs/one.harnsy"
+        self.k.release(self.dir, [pack])
+        _, employees = catalog.load_release(DirSource(self.dir), self.k.keys, HOST, self.k.now)
+        self.assertEqual((employees[0].entry.id, len(employees[0].files)), (part + "/" + part, 14))
+
+    def test_more_ids_and_versions_outside_the_grammar(self) -> None:
+        pack, long = self.k.pack("harnsy/reviewer", "1.0.0", sample("reviewer")), "a" * 65
+        for id in ["harnsy/x/y", "Harnsy/x", "harnsy/X", "harnsy/-x", "/x", "harnsy/", "harnsy/x ", "harnsy/x.y", "harnsy/" + long,
+                   long + "/x", "harnsy/x\\..\\y"]:
+            self.k.release(self.dir, [pack], lambda f: f["bundles"][0].update(id=id))
+            self.refused("not in the catalog's form")
+        for version in ["01.0.0", "1.0.0-rc1", "v1.0.0", "1.0.0/../x", ""]:
+            self.k.release(self.dir, [pack], lambda f: f["bundles"][0].update(version=version))
+            self.refused("not in the catalog's form")
+
+    def test_a_revoked_entry_is_left_out_before_its_file_is_looked_for(self) -> None:
+        pack = self.k.pack("harnsy/reviewer", "1.0.0", sample("reviewer"))
+        def edit(f):
+            f["bundles"][0]["url"] = "https://evil.example/x.harnsy"
+            f["revoked"] = ["harnsy/reviewer@1.0.0"]
+        self.k.release(self.dir, [pack], edit)
+        self.assertEqual(catalog.load_release(DirSource(self.dir), self.k.keys, HOST, self.k.now)[1], [])
+
     def test_a_file_a_bundle_may_not_hold(self) -> None:
-        for path in ["SOUL.md", "config.yaml", "skills/race-hunt/hooks/run.sh", "docs/notes.md", "skills/race-hunt/scripts/.env"]:
+        long = "a" * 65
+        for path in ["SOUL.md", "config.yaml", "skills/race-hunt/hooks/run.sh", "docs/notes.md", "skills/race-hunt/scripts/.env",
+                     "README.md", "docs/other.md", "docs/persona-casebook.md.bak", "avatar.gif", "avatar.png/x", "bundle.json.d/x",
+                     "skills/SKILL.md", "skills/Race/SKILL.md", "skills/race_hunt/SKILL.md", "skills/" + long + "/SKILL.md",
+                     "skills/race-hunt/README.md", "skills/race-hunt/Scripts/run.sh", "skills/race-hunt/scripts/a/b.sh",
+                     "skills/race-hunt/scripts/.hidden", "skills/race-hunt/scripts/run.", "skills/race-hunt/scripts/run it.sh",
+                     "skills/race-hunt/scripts/nul.txt", "skills/race-hunt/assets/COM1", "skills/race-hunt/references/skill.md",
+                     "skills/race-hunt/scripts/" + long]:
             pack = self.k.pack("harnsy/reviewer", "1.0.0", sample("reviewer") | {path: b"x"})
             self.k.release(self.dir, [pack])
-            self.refused("not a file a bundle may hold")
+            self.refused("is not a file a bundle carries")
 
 
 if __name__ == "__main__":

@@ -8,6 +8,7 @@ as the catalog's own MCP server renders for Hermes Agent.
 from __future__ import annotations
 
 import json
+import unicodedata
 from dataclasses import dataclass
 
 from . import persona
@@ -90,7 +91,8 @@ def render(e: Employee) -> Tree:
 
 def _check_paths(home: str, files: list[tuple[str, bytes]]) -> None:
     """A second gate, independent of the checks on the bundle: every path is a clean relative one inside the
-    employee's folder, and none is there twice."""
+    employee's folder, without a control character, and none is there twice."""
     paths = [p for p, _ in files]
-    if len(set(paths)) != len(paths) or not all(p.startswith(home) and clean_relative(p) for p in paths):
+    plain = all(p.startswith(home) and clean_relative(p) and not any(unicodedata.category(c) == "Cc" for c in p) for p in paths)
+    if len(set(paths)) != len(paths) or not plain:
         raise Refusal("the employee's files do not make a clean folder (a path twice, or one that leaves the folder)")

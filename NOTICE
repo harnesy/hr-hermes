@@ -1,0 +1,13 @@
+hr-hermes
+Copyright (c) 2026 Pavel Buchnev (harnsy). Licensed under the MIT licence (see LICENSE).
+
+This project contains text copied from another work, which is under its own licence. Full text:
+THIRD_PARTY_LICENSES.
+
+- Hermes Agent (github.com/NousResearch/hermes-agent) — Nous Research (MIT): the patterns in harnsy_hr/hermesscan
+  are copied from its scanner (tools/threat_patterns.py, v0.23.1)
+
+No library is part of this repository. To check signatures the plugin uses the Python package `cryptography`
+(Apache-2.0 OR BSD-3-Clause) that Hermes Agent ships.
+
+Employees of the hr.harnsy.dev catalog are not part of this project and are not under its licence.
