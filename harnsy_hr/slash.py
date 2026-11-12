@@ -36,8 +36,8 @@ def _at_a_terminal(command: str, rest: list[str]) -> str:
         target = target if grammar.is_id(target) else "<publisher>/<name>"
     else:
         target = target if target and not grammar.profile_name_fault(target) else "<profile name>"
-    return (f"`{command}` asks you questions and starts Hermes' own installer, so it runs at a terminal, not in a "
-            f"chat. Run:\n  hermes harnsy-hr {command} {target}")
+    return (f"`{command}` asks you questions and then lets Hermes' own `hermes profile` command ask too, so it runs "
+            f"at a terminal, not in a chat. Run:\n  hermes harnsy-hr {command} {target}")
 
 
 def handle(raw_args: str) -> str:
