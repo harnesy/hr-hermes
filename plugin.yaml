@@ -1,0 +1,9 @@
+name: harnsy-hr
+version: "0.1.0"
+description: "Hire an AI employee from the signed catalog hr.harnsy.dev as a Hermes profile of its own"
+author: "Pavel Buchnev (harnsy)"
+license: MIT
+homepage: https://github.com/harnesy/hr-hermes
+requires_hermes: ">=0.23.1"
+provides_tools: []
+provides_hooks: []

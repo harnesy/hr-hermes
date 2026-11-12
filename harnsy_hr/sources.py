@@ -47,6 +47,7 @@ class HttpSource:
             with self._opener.open(request, timeout=TIMEOUT) as response:
                 data = response.read(limit + 1)
         except urllib.error.HTTPError as err:
+            err.close()
             raise Refusal(f"{rel}: the catalog answered {err.code}") from None
         except (OSError, ValueError) as err:
             raise Refusal(f"{rel}: the catalog cannot be reached ({type(err).__name__})") from None
