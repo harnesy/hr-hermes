@@ -19,7 +19,7 @@ from .notice import OWN_AUTHOR, SPACE, is_own, notice, publisher_name, title
 from .persona import CASEBOOK_SKILL
 from .types import Employee
 
-CHANGE = "rendered for hermes"  # the «Changes:» of the notice
+CHANGE = "assembled into a Hermes profile"  # the «Changes:» of the notice
 
 
 @dataclass

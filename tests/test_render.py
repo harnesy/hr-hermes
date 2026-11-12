@@ -174,7 +174,7 @@ class NoticeTest(unittest.TestCase):
                       notices["harnsy/sample-scripts"])
         for never in ["Pavel Buchnev", "CC BY 4.0", "©", "picture"]:
             self.assertNotIn(never, notices["octo/sample-guest"])
-        self.assertTrue(all(re.search(r"Changes: rendered for hermes\.", n) for n in notices.values()))
+        self.assertTrue(all(re.search(r"Changes: assembled into a Hermes profile\.", n) for n in notices.values()))
 
 
 if __name__ == "__main__":
