@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import unicodedata
 
 from . import persona
 from .desk import Offer
@@ -14,8 +15,15 @@ _CONTROL = re.compile(r"[\x00-\x08\x0b-\x1f\x7f-\x9f\u2028\u2029]")
 
 
 def plain(text: str) -> str:
-    """Text from the catalog, safe to print: without control characters (a terminal would obey them)."""
-    return _CONTROL.sub("", text)
+    """Text from the catalog, safe to print: without control characters (a terminal would obey them) and without the
+    characters nobody sees (Unicode category Cf: they turn text around or hide a part of it, so a person would read
+    something other than what is written to the files). Only what is printed goes through here, never a file."""
+    return "".join(c for c in _CONTROL.sub("", text) if unicodedata.category(c) != "Cf")
+
+
+def one_line(text: str) -> str:
+    """A name read from the disk, printed on a line of its own: as `plain`, and a line break in it is a space."""
+    return plain(text).replace("\n", " ").replace("\t", " ")
 
 
 def card(e: Entry) -> str:

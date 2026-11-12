@@ -48,7 +48,7 @@ def run(app: App, command: str, test_catalog: bool = False, **options) -> int:
             app.io.say(keys.TEST_LINE)
         return _COMMANDS[command](app.desk(setup), app.io, **options)
     except Refusal as err:
-        app.io.say(f"harnsy-hr: {err}")
+        app.io.say(preview.plain(f"harnsy-hr: {err}"))
     except OSError as err:
         app.io.say(f"harnsy-hr: a file could not be read or written ({type(err).__name__}: {err.strerror}: {err.filename})")
     return 1
@@ -81,7 +81,7 @@ def _list(app: App) -> int:
         return 0
     for name, hired in sorted(hires.items()):
         gone = "" if state.profile_dir(name).is_dir() else "  (its profile is gone: `hermes harnsy-hr fire` tidies up)"
-        app.io.say(preview.plain(f"{name}  {hired.get('id', '?')} {hired.get('version', '?')}{gone}"))
+        app.io.say(preview.one_line(f"{name}  {hired.get('id', '?')} {hired.get('version', '?')}{gone}"))
     app.io.say("\nTalk to one: hermes -p <name> chat")
     return 0
 

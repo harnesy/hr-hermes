@@ -105,6 +105,19 @@ class SlashTest(CliCase):
         self.assertEqual(self.hermes.calls, [])
         self.assertFalse((self.home / "harnsy-hr" / "profiles").exists())
 
+    def test_every_answer_is_one_code_block_so_the_chat_makes_no_link_or_mention_of_it(self) -> None:
+        import json
+        from tests.kit import sample
+        doc = json.loads(sample("reviewer")["bundle.json"])
+        doc["role"]["tagline"] = "Finds it.\n```\n[pay here](https://elsewhere.example) @everyone `x` **now**"
+        self.publish("1.0.0", **{"bundle.json": json.dumps(doc).encode()})
+        for raw in ["", "list", "search review", "search zeppelin", "show harnsy/reviewer", "show harnsy/nobody",
+                    "hire harnsy/reviewer", "fire `x`"]:
+            answer = self.run_slash(raw)
+            self.assertTrue(answer.startswith("```\n") and answer.endswith("\n```"), raw)
+            self.assertNotIn("`", answer[4:-4], raw)
+        self.assertIn("[pay here](https://elsewhere.example) @everyone 'x' **now**", self.run_slash("search review"))
+
     def test_anything_else_gets_the_usage(self) -> None:
         for raw in ["", "help", "dance", "   "]:
             self.assertIn("/harnsy-hr search <words>", self.run_slash(raw))

@@ -3,6 +3,9 @@
 A slash command runs in the process that serves the chat, where nobody sits at a terminal. So only what reads is done
 here; for hire, update and fire the answer is the command to run at a terminal: they ask a person, and nothing that
 waits for a person may run here.
+
+A chat shows an answer as Markdown, and the text of a card or a notice is its publisher's. So every answer goes out as
+one code block: a link, a mention or a heading written there is shown as it is written and not made by the bot.
 """
 
 from __future__ import annotations
@@ -42,6 +45,10 @@ def _at_a_terminal(command: str, rest: list[str]) -> str:
 
 def handle(raw_args: str) -> str:
     """The handler Hermes calls with everything typed after /harnsy-hr; what it returns is shown in the chat."""
+    return "```\n" + _answer(raw_args).replace("`", "'") + "\n```"  # no backtick inside: the block cannot be left
+
+
+def _answer(raw_args: str) -> str:
     words = (raw_args or "").split()
     command, rest = (words[0].lower(), words[1:]) if words else ("", [])
     if command in ("hire", "update", "fire"):

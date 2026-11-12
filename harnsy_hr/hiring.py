@@ -90,7 +90,7 @@ def _hired(state: State, name: str) -> dict:
 def _changes(old: dict[str, bytes], offer: Offer) -> str:
     new = folders.relative_files(offer.tree)
     lines = [f"  {'new    ' if p not in old else 'changed'}  {p}" for p in new if old.get(p) != new[p]]
-    lines += [f"  gone     {p}" for p in old if p not in new]
+    lines += [f"  gone     {preview.one_line(p)}" for p in old if p not in new]  # names as the disk holds them
     return "\n".join(lines) or "  (no file differs)"
 
 
@@ -106,7 +106,7 @@ def update(desk: Desk, io: Io, name: str, yes: bool = False) -> int:
     if old == folders.relative_files(offer.tree) and folders.holds(profile, offer.tree):
         io.say(f"«{name}» is up to date: {preview.plain(offer.entry.title)} {offer.entry.version}.")
         return 0
-    io.say(f"Update «{name}»: {preview.plain(offer.entry.title)} {hired.get('version', '?')} → {offer.entry.version}\n"
+    io.say(f"Update «{name}»: {preview.plain(offer.entry.title)} {preview.one_line(str(hired.get('version', '?')))} → {offer.entry.version}\n"
            f"{_changes(old, offer)}\n\nNotice:\n\n{preview.plain(offer.tree.notice)}\n"
            "Your settings, memory and .env in the profile stay as they are.\n")
     if not _agreed(desk, io, yes, f"Update the profile «{name}»? [y/N] "):
@@ -131,7 +131,7 @@ def update(desk: Desk, io: Io, name: str, yes: bool = False) -> int:
     state.record(name, hired["id"], offer.entry.version)
     io.say(f"\nUpdated: «{name}» is {preview.plain(offer.entry.title)} {offer.entry.version}.")
     if dropped := _skill_folders(old) - _skill_folders(folders.relative_files(offer.tree)):
-        io.say("This version no longer has: " + ", ".join(sorted(dropped)) + ". Hermes keeps a skill folder it once "
+        io.say("This version no longer has: " + ", ".join(sorted(map(preview.one_line, dropped))) + ". Hermes keeps a skill folder it once "
                f"installed; remove it from {profile / 'skills'} if you do not want it.")
     return 0
 
