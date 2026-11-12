@@ -47,7 +47,7 @@ class HttpSource:
         try:
             with self._opener.open(request, timeout=TIMEOUT) as response:
                 data = response.read(limit + 1)
-                if len(data) <= limit and response.length:  # the answer ended before the length it announced
+                if len(data) <= limit and getattr(response, "length", None):  # the answer ended before the length it announced
                     raise http.client.IncompleteRead(data, response.length)
         except urllib.error.HTTPError as err:
             err.close()
